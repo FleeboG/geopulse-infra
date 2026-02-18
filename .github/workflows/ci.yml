@@ -1,0 +1,36 @@
+name: infra-ci
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.5"
+
+      - name: Terraform fmt (auto-skip until .tf files exist)
+        run: |
+          TF_COUNT=$(find . -name "*.tf" | wc -l | tr -d ' ')
+          if [ "$TF_COUNT" -gt "0" ]; then
+            terraform fmt -check -recursive
+          else
+            echo "No .tf files yet — skipping terraform fmt"
+          fi
+
+      - name: Terraform validate (auto-skip until env/dev/main.tf exists)
+        run: |
+          if [ -f env/dev/main.tf ]; then
+            cd env/dev
+            terraform init -backend=false
+            terraform validate
+          else
+            echo "env/dev/main.tf not found yet — skipping terraform validate"
+          fi
